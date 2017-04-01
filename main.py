@@ -3,24 +3,18 @@ from sensors.sensor import Sensor
 #rom sensors.fakesensor import FakeSensor
 
 def main():
-    assert(conf.sensor1_enabled or conf.sensor2_enabled)
-    if conf.sensor1_enabled:
-        #if conf.sensor1_fake:
-
-        #else:"
-        sens1 = Sensor(conf.sensor1_gpio_pin)
-
-    # if conf.sensor2_enabled:
-    #     #if conf.sensor1_fake:
-    #
-    #     #else:"
-    #     sens1 = Sensor(conf.sensor1_gpio_pin)
+    assert(0 < len(conf.sensors) <= 8)
+    sensors = list()
+    for i in range(len(conf.sensors)):
+        if conf.sensors[i].get("enabled"):
+            sensors.append(Sensor(i))
 
     while True:
         i = input("Read sensor data?")
-        if int(i) == 1:
-            print(sens1.read())
-        elif int(i) == 0:
+        if i == "1":
+            for s in sensors:
+                print(s.read())
+        elif i == "0":
             break
 
 
