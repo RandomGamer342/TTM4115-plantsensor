@@ -7,7 +7,7 @@ def main():
     sensors = list()
     for i in range(len(conf.sensors)):
         if conf.sensors[i].get("enabled"):
-            sensors.append(Sensor(i))
+            sensors.append(Sensor(i, conf.sensors[i].get("max_threshold")))
 
     while True:
         i = input("Read sensor data?")

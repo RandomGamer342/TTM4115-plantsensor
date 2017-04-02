@@ -4,6 +4,7 @@ server_port = "11037"
 # Ideally a list for scalability, but this is fine for now
 sensor1 = {
     "enabled": True,
+    "max_threshold": 600, # Equivalent to putting the sensor straight into water
     "fake": True,
     "fake_max_threshold": 0.6,
     "fake_min_threshold": 0,
@@ -11,7 +12,8 @@ sensor1 = {
     }
 
 sensor2 = {
-    "enabled": True,
+    "enabled": False,
+    "max_threshold": 600,  # Equivalent to putting the sensor straight into water
     "fake": True,
     "fake_max_threshold": 0.6,
     "fake_min_threshold": 0,
