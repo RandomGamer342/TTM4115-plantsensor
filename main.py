@@ -13,7 +13,7 @@ def on_connect(client, userdata, flags, rc):
         print("Connected!")
         userdata.set()
     else:
-        print(f"Cannot connect to server due to a configuration issue. ({mqtt.connack_string(rc)})")
+        print("Cannot connect to server due to a configuration issue. ({})".format(mqtt.connack_string(rc)))
         print("Change the config and try again.")
         exit(1)
 
@@ -35,8 +35,8 @@ def sensor_reader(con, preparing, client, sensors):
         for s in sensors:
             hum = s.read()
             payload = {"humidity": hum, "timestamp": time.time()}
-            print(f"{s.id}: {hum}")
-            client.publish(f"plantlife/sensors/{s.id}/humidity", json.JSONEncoder().encode(payload), retain=True)
+            print("{}: {}".format(s.id, hum))
+            client.publish("plantlife/sensors/{}/humidity".format(s.id), json.JSONEncoder().encode(payload), retain=True)
         preparing.clear()
         time.sleep(conf.send_interval)
 

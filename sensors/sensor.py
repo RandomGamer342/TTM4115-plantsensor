@@ -13,7 +13,7 @@ class Sensor:
         self.id = id
         self.pin = pin
         self.maxthr = maxthr
-        print(f"Initialised sensor {id}.")
+        print("Initialised sensor {}.".format(id))
 
     def read(self):
         return min(float(mcp.read_adc(self.pin)) / self.maxthr, 1.)
