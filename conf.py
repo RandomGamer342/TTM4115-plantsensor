@@ -1,5 +1,5 @@
 hostname = "localhost"
-port = "1183"
+port = 1883
 
 device_id = "123456"
 
