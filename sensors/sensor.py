@@ -9,9 +9,11 @@ SPI_DEVICE = 0
 mcp = Adafruit_MCP3008.MCP3008(spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE))
 
 class Sensor:
-    def __init__(self, pin, maxthr):
+    def __init__(self, id, pin, maxthr):
+        self.id = id
         self.pin = pin
         self.maxthr = maxthr
+        print(f"Initialised sensor {id}.")
 
     def read(self):
         return min(float(mcp.read_adc(self.pin)) / self.maxthr, 1.)
