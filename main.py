@@ -50,10 +50,10 @@ def main():
             sensors.append(Sensor(conf.sensors[i].get("id"), i, conf.sensors[i].get("max_threshold")))
     print("Sensors initialised!")
     print("Connecting to server...")
-    mc = mqtt.Client(client_id=conf.device_id, clean_session=True)
+    mc = mqtt.Client(client_id=conf.device_id, clean_session=False)
     mc.on_connect = on_connect
     mc.on_disconnect = on_disconnect
-    mc.connect(conf.hostname, conf.port)
+    mc.connect(conf.hostname, conf.port, 3 * conf.send_interval)
     mc.loop_start()
 
     connected = threading.Event()
@@ -61,7 +61,7 @@ def main():
 
     preparing_message = threading.Event()
 
-    sender = threading.Thread(target=sensor_reader, args=(connected, preparing_message, mc, sensors))
+    sender = threading.Thread(target=sensor_reader, args=(connected, preparing_message, mc, sensors), daemon=True)
     sender.start()
 
     while True:
