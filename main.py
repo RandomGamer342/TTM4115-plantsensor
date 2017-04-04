@@ -27,22 +27,29 @@ def on_disconnect(client, userdata, rc):
         print("Disconnected.")
         exit(0)
 
-def sensor_reader(con, preparing, ready, client, sensors):
+def on_publish(client, userdata, mid):
+    client.user_data_set([userdata[0], userdata[1], userdata[2] - 1])
+    if userdata[2] - 1 == 0:  # assume userdata does not get updated by above
+        userdata[1].set() # naively assume that 0 readied messages equals all messages being published
+
+def sensor_reader(con, ready, sent, client, sensors):
     timer = threading.Timer(0, ready.set)
     timer.start()
     while True:
         con.wait()
+        sent.wait()
         ready.wait()
         if timer.is_alive():
             timer.cancel()
-        preparing.set()
         print("Preparing data...")
+        sent.clear()
+        client.user_data_set([con, sent, len(sensors)])
         for s in sensors:
             hum = s.read()
-            payload = {"humidity": hum, "timestamp": time.time()}
-            print("{}: {}".format(s.id, hum))
+            tim = time.time()
+            payload = {"humidity": hum, "timestamp": tim}
+            print("{}: {} - {}".format(tim, s.id, hum))
             client.publish("plantlife/sensors/{}/humidity".format(s.id), json.JSONEncoder().encode(payload), retain=True)
-        preparing.clear()
         ready.clear()
         timer = threading.Timer(conf.send_interval, ready.set)
         timer.start()
@@ -68,13 +75,15 @@ def main():
     mc.loop_start()
 
     connected = threading.Event()
-    mc.user_data_set(connected)
-
-    preparing_message = threading.Event()
 
     ready = threading.Event()
 
-    sender = threading.Thread(target=sensor_reader, args=(connected, preparing_message, ready, mc, sensors), daemon=True)
+    sent = threading.Event()
+    sent.set()
+
+    mc.user_data_set([connected, sent, 0])
+
+    sender = threading.Thread(target=sensor_reader, args=(connected, ready, sent, mc, sensors), daemon=True)
     sender.start()
 
     while True:
@@ -84,9 +93,7 @@ def main():
             print("Please enter a command.")
         elif inp[0] == "exit":
             if connected.is_set():
-                if preparing_message.is_set():
-                    preparing_message.wait()
-                #TODO: Wait for messages to actually be published
+                sent.wait()
                 mc.disconnect()
             else:
                 exit(0)
