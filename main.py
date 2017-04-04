@@ -11,7 +11,7 @@ from sys import exit
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connected!")
-        userdata.set()
+        userdata[0].set()
     else:
         print("Cannot connect to server due to a configuration issue. ({})".format(mqtt.connack_string(rc)))
         print("Change the config and try again.")
@@ -20,7 +20,7 @@ def on_connect(client, userdata, flags, rc):
 def on_disconnect(client, userdata, rc):
     if rc != 0:
         print("Connection lost. Trying to connect again...")
-        userdata.clear()
+        userdata[0].clear()
         # Handled by loop_start()
         #client.reconnect()
     else:
@@ -68,20 +68,21 @@ def main():
                 sensors.append(Sensor(s.get("id"), i, s.get("max_threshold")))
     print("Sensors initialised!")
     print("Connecting to server...")
-    mc = mqtt.Client(client_id=conf.device_id, clean_session=False)
-    mc.on_connect = on_connect
-    mc.on_disconnect = on_disconnect
-    mc.connect(conf.hostname, conf.port, 3 * conf.send_interval)
-    mc.loop_start()
 
     connected = threading.Event()
-
-    ready = threading.Event()
 
     sent = threading.Event()
     sent.set()
 
-    mc.user_data_set([connected, sent, 0])
+
+    mc = mqtt.Client(client_id=conf.device_id, clean_session=False, userdata=[connected, sent, 0])
+    mc.on_connect = on_connect
+    mc.on_disconnect = on_disconnect
+    mc.on_publish = on_publish
+    mc.connect(conf.hostname, conf.port, 3 * conf.send_interval)
+    mc.loop_start()
+
+    ready = threading.Event()
 
     sender = threading.Thread(target=sensor_reader, args=(connected, ready, sent, mc, sensors), daemon=True)
     sender.start()
@@ -95,6 +96,7 @@ def main():
             if connected.is_set():
                 sent.wait()
                 mc.disconnect()
+                exit(0)
             else:
                 exit(0)
         elif inp[0] == "update":
