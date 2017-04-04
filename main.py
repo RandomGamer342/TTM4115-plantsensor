@@ -138,6 +138,8 @@ def main():
             print("water <sensor number> <humidity>\t-\tWater the plant to specified fraction of humidity.",
                   "If humidity is unspecified, default to the good threshold. Only relevant for fake sensors.")
             print("exit\t-\tStop the sensor system and quit this program.")
+        else:
+            print("Invalid command. Hint: Use the help command.")
 
 
 if __name__ == "__main__":
