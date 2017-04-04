@@ -1,6 +1,6 @@
 import conf
 from sensors.sensor import Sensor
-#rom sensors.fakesensor import FakeSensor
+from sensors.fakesensor import FakeSensor
 import paho.mqtt.client as mqtt
 import json
 import time
@@ -27,9 +27,14 @@ def on_disconnect(client, userdata, rc):
         print("Disconnected.")
         exit(0)
 
-def sensor_reader(con, preparing, client, sensors):
+def sensor_reader(con, preparing, ready, client, sensors):
+    timer = threading.Timer(0, ready.set)
+    timer.start()
     while True:
         con.wait()
+        ready.wait()
+        if timer.is_alive():
+            timer.cancel()
         preparing.set()
         print("Preparing data...")
         for s in sensors:
@@ -38,7 +43,9 @@ def sensor_reader(con, preparing, client, sensors):
             print("{}: {}".format(s.id, hum))
             client.publish("plantlife/sensors/{}/humidity".format(s.id), json.JSONEncoder().encode(payload), retain=True)
         preparing.clear()
-        time.sleep(conf.send_interval)
+        ready.clear()
+        timer = threading.Timer(conf.send_interval, ready.set)
+        timer.start()
 
 def main():
     assert(0 < len(conf.sensors) <= 8)
@@ -46,8 +53,12 @@ def main():
     print("Welcome to the Plant-Life sensor system!")
     print("Initialising sensors...")
     for i in range(len(conf.sensors)):
-        if conf.sensors[i].get("enabled"):
-            sensors.append(Sensor(conf.sensors[i].get("id"), i, conf.sensors[i].get("max_threshold")))
+        s = conf.sensors[i]
+        if s.get("enabled"):
+            if s.get("fake"):
+                sensors.append(FakeSensor(s.get("id"), s.get("fake_good_threshold"), s.get("fake_timerate")))
+            else:
+                sensors.append(Sensor(s.get("id"), i, s.get("max_threshold")))
     print("Sensors initialised!")
     print("Connecting to server...")
     mc = mqtt.Client(client_id=conf.device_id, clean_session=False)
@@ -61,7 +72,9 @@ def main():
 
     preparing_message = threading.Event()
 
-    sender = threading.Thread(target=sensor_reader, args=(connected, preparing_message, mc, sensors), daemon=True)
+    ready = threading.Event()
+
+    sender = threading.Thread(target=sensor_reader, args=(connected, preparing_message, ready, mc, sensors), daemon=True)
     sender.start()
 
     while True:
@@ -77,9 +90,46 @@ def main():
                 mc.disconnect()
             else:
                 exit(0)
+        elif inp[0] == "update":
+            ready.set()
+        elif inp[0] == "sensors":
+            for i in range(len(sensors)):
+                s = sensors[i]
+                print("{}[{}]Sensor {}: {}".format(
+                    "[FAKE]" if s is FakeSensor else "",
+                    i,
+                    s.id,
+                    s.read()
+                ))
+        elif inp[0] == "water":  # Huge mess
+            if len(inp) < 2:
+                print("Please enter a sensor number!\t(water <sensor number> <humidity>)")
+            try:
+                id = int(inp[1])
+                if id < 0 or id >= len(sensors):
+                    print("Please enter a valid sensor number, between 0 and {}. Hint: Use the sensors command.".format(
+                        len(sensors) - 1
+                    ))
+                elif not sensors[id]["fake"]:
+                    print("Sensor", id, "is not fake. You will have to water this plant yourself!")
+                else:
+                    fraction = None
+                    if len(inp) > 2:
+                        fraction = float(inp[2])
+                    if fraction is not None and (fraction < 0 or fraction > 1):
+                        print("Please enter a valid fraction for humidity between 0 and 1")
+                    else:
+                        print("Watered plant to humidity {}.".format(sensors[id].water(fraction)))
+
+            except ValueError:
+                print("Please enter valid numbers for sensor/fraction!\t(water <sensor number> <humidity>)")
         elif inp[0] == "help":
             print("Available commands:")
             print("help\t-\tShow this help text again.")
+            print("update\t-\tSend a sensor update right now, skipping the usual delay.")
+            print("sensors\t-\tPrint information about existing sensors.")
+            print("water <sensor number> <humidity>\t-\tWater the plant to specified fraction of humidity.",
+                  "If humidity is unspecified, default to the good threshold. Only relevant for fake sensors.")
             print("exit\t-\tStop the sensor system and quit this program.")
 
 

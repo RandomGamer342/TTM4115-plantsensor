@@ -9,6 +9,7 @@ SPI_DEVICE = 0
 mcp = Adafruit_MCP3008.MCP3008(spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE))
 
 class Sensor:
+    #TODO: Ideally would take the dictionary in conf.py, but i cannot bother sanity-checking this right now
     def __init__(self, id, pin, maxthr):
         self.id = id
         self.pin = pin
